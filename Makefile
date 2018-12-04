@@ -3,10 +3,12 @@ CC			=	nvcc
 NVCC		=	nvcc
 LD			=	nvcc
 
-EXE			:= 	cub-test
+EXE			:= 	redsync-test
+CPP_SRS := kernels.cc
+CPP_OBJS := ${CPP_SRCS:.cc=.o}
 CU_SRCS	:= main.cu
 CU_OBJS	:=	${CU_SRCS:.cu=.o}
-OBJS		:=	$(CU_OBJS) #$(CPP_OBJS) $(CU_OBJS)
+OBJS		:=	$(CPP_OBJS) $(CU_OBJS)
 
 # include directories
 INC_DIRS	:=	/usr/local/cuda/include \
@@ -29,7 +31,7 @@ $(CU_OBJS): EXTRA_FLAGS := -arch compute_61
 $(EXE): $(OBJS)
 	$(LD) $(OBJS) $(LDFLAGS) -o $(EXE)
 
-.cpp.o:
+.cc.o:
 	$(CC) $(CCFLAGS) $<
 
 %.o : %.cu
