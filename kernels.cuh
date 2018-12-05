@@ -128,7 +128,27 @@ void GetFiltered(cub::CachingDeviceAllocator &g_allocator, float *in_vals, int *
     if (d_temp_storage) CubDebugExit(g_allocator.DeviceFree(d_temp_storage));
 }
 
-void TrimmedTopK(cub::CachingDeviceAllocator &g_allocator, float *in, float *out, int *num_out, int k, int num_items) {
+// TODO: add multi-stream pipelining
+void TrimmedTopK(cub::CachingDeviceAllocator &g_allocator, float *in, float *out_vals, int *out_indices, int *out_num, int k, int num_items) {
+    // create all device variables.
+    float *d_in_vals = NULL;
+    float *d_in_indices = NULL;
+    float *d_out_max = NULL;
+    float *d_out_sum = NULL;
+    int *d_out_num = NULL;
+    float *d_out_vals = NULL;
+    int *d_out_indices = NULL;
+
+    // allocate and memcpy.
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_in_vals, sizeof(float)*num_items));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_in_indices, sizeof(int)*num_items));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_out_max, sizeof(float)*1));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_out_sum, sizeof(float)*1));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_out_num, sizeof(int)*1));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_out_vals, sizeof(float)*num_items));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_out_indices, sizeof(int)*num_items));
+
+    CubDebugExit(cudaMemcpy(d_in, in, num_items*sizeof(float), cudaMemcpyHostToDevice));
     // compute mean and max
     // epsilon = 0.2
     // ratio = 1-epsilon
