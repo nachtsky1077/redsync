@@ -13,14 +13,16 @@ void test(cub::CachingDeviceAllocator &g_allocator,
           float* out_mean_ref,
           float* out_max_ref,
           int* out_num_ref,
+          float threshold,
           int num_elements)
 { 
-    cub::CubDebugExit(cudaMemcpy(d_in, in, num_elements*sizeof(float), cudaMemcpyHostToDevice));
+    CubDebugExit(cudaMemcpy(d_in, in, num_elements*sizeof(float), cudaMemcpyHostToDevice));
     MeanKernel(g_allocator, d_in, d_out, num_elements);
-    cub::CubDebugExit(cudaMemcpy(out, d_out, 1*sizeof(float), cudaMemcpyDeviceToHost));
+    CubDebugExit(cudaMemcpy(out, d_out, 1*sizeof(float), cudaMemcpyDeviceToHost));
 
     bool flag = true;
-    if (abs(out[0] - out_mean_ref[0]) < 0.001f)
+    out[0] = out[0] / num_elements;
+    if (abs(out[0] - out_mean_ref[0]) > 0.001f)
     {
         flag = false;
         printf("mean kernel result is wrong: %f %f\n", out[0], out_mean_ref[0]);
@@ -29,10 +31,10 @@ void test(cub::CachingDeviceAllocator &g_allocator,
         printf("mean kernel passed.\n");
 
     MaxKernel(g_allocator, d_in, d_out, num_elements);
-    cub::CubDebugExit(cudaMemcpy(out, d_out, 1*sizeof(float), cudaMemcpyDeviceToHost));
+    CubDebugExit(cudaMemcpy(out, d_out, 1*sizeof(float), cudaMemcpyDeviceToHost));
     
     flag = true;
-    if (abs(out[0] - out_max_ref[0]) < 0.001f)
+    if (abs(out[0] - out_max_ref[0]) > 0.001f)
     {
         flag = false;
         printf("max kernel result is wrong: %f %f\n", out[0], out_max_ref[0]);
@@ -40,12 +42,12 @@ void test(cub::CachingDeviceAllocator &g_allocator,
     if (flag)
         printf("max kernel passed.\n");
 
-    CountNonZero(g_allocator, d_in, d_out, d_out_num, float threshold, int num_items);
-    cub::CubDebugExit(cudaMemcpy(out, d_out, 1*sizeof(float), cudaMemcpyDeviceToHost));
-    cub::CubDebugExit(cudaMemcpy(out_num, d_out_num, 1*sizeof(int), cudaMemcpyDeviceToHost));
+    CountNonZero(g_allocator, d_in, d_out, d_out_num, threshold, num_elements);
+    CubDebugExit(cudaMemcpy(out, d_out, 1*sizeof(float), cudaMemcpyDeviceToHost));
+    CubDebugExit(cudaMemcpy(out_num, d_out_num, 1*sizeof(int), cudaMemcpyDeviceToHost));
 
     flag = true;
-    if (abs(out_num[0] - out_num_ref[0]) < 0.001f)
+    if (abs(out_num[0] - out_num_ref[0]) > 0.001f)
     {
         flag = false;
         printf("count nnz kernel result is wrong: %d %d\n", out_num[0], out_num_ref[0]);
@@ -60,17 +62,15 @@ int main()
     int num_elements = 512*256*24;
     
     float* data = (float*)malloc(num_elements * sizeof(float));
-    float* result_max = (float*)malloc(1 * sizeof(float));
-    float* result_mean = (float*)malloc(1 * sizeof(float));
+    float* result = (float*)malloc(1 * sizeof(float));
     int* result_num = (int*)malloc(1 * sizeof(int));
     float* result_ref_max = (float*)malloc(1 * sizeof(float));
     float* result_ref_mean = (float*)malloc(1 * sizeof(float));
     int* result_ref_num = (int*)malloc(1 * sizeof(int));
     
     memset(result_ref_max, -1.0f, 1 * sizeof(float));
-    memset(result_max, 0.0f, 1 * sizeof(float));
     memset(result_ref_mean, 0.0f, 1 * sizeof(float));
-    memset(result_mean, 0.0f, 1 * sizeof(float));
+    memset(result, 0.0f, 1 * sizeof(float));
     memset(result_ref_num, 0, 1 * sizeof(int));
     memset(result_num, 0, 1 * sizeof(int));
 
@@ -79,9 +79,11 @@ int main()
     int* d_result_num = NULL;
     float threshold = 5.0f;
 
-    cub::CubDebugExit(g_allocator.DeviceAllocate((void**)&d_data, sizeof(float)*num_elements));
-    cub::CubDebugExit(g_allocator.DeviceAllocate((void**)&d_result, sizeof(float)*num_elements));
-    cub::CubDebugExit(g_allocator.DeviceAllocate((void**)&d_result_num, sizeof(int)*1));
+    cub::CachingDeviceAllocator g_allocator(true);
+
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_data, sizeof(float)*num_elements));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_result, sizeof(float)*num_elements));
+    CubDebugExit(g_allocator.DeviceAllocate((void**)&d_result_num, sizeof(int)*1));
 
     for (int i = 0; i < num_elements; ++i)
     {
@@ -112,6 +114,7 @@ int main()
           result_ref_mean,
           result_ref_max,
           result_ref_num,
+          threshold,
           num_elements);
 
     if (data) delete[] data;

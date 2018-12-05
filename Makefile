@@ -4,11 +4,11 @@ NVCC		=	nvcc
 LD			=	nvcc
 
 EXE			:= 	redsync-test
-CPP_SRS := kernels.cc
-CPP_OBJS := ${CPP_SRCS:.cc=.o}
+#CPP_SRCS := kernels.cc
+#CPP_OBJS := ${CPP_SRCS:.cc=.o}
 CU_SRCS	:= main.cu
 CU_OBJS	:=	${CU_SRCS:.cu=.o}
-OBJS		:=	$(CPP_OBJS) $(CU_OBJS)
+OBJS	:=	$(CU_OBJS) #$(CPP_OBJS) $(CU_OBJS)
 
 # include directories
 INC_DIRS	:=	/usr/local/cuda/include \
